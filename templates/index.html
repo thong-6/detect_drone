@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drone AI - YOLO Object Detection</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .header {
+        text-align: center;
+        color: white;
+        margin-bottom: 40px;
+        padding: 20px;
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+      }
+
+      .upload-section {
+        background: white;
+        border-radius: 15px;
+        padding: 40px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+      }
+
+      .upload-area {
+        border: 3px dashed #667eea;
+        border-radius: 10px;
+        padding: 60px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: #f8f9fa;
+      }
+
+      .upload-area:hover {
+        background: #eef2ff;
+        border-color: #764ba2;
+      }
+
+      .upload-area i {
+        font-size: 3rem;
+        color: #667eea;
+        margin-bottom: 20px;
+      }
+
+      .upload-area h3 {
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .upload-area p {
+        color: #666;
+        margin-bottom: 20px;
+      }
+
+      .file-input {
+        display: none;
+      }
+
+      .upload-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 50px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: transform 0.3s;
+      }
+
+      .upload-btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .upload-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .progress-container {
+        margin-top: 20px;
+        display: none;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 20px;
+        background: #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        width: 0%;
+        transition: width 0.3s;
+      }
+
+      .result-section {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        display: none;
+      }
+
+      .result-section h2 {
+        color: #333;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #667eea;
+      }
+
+      .result-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+      }
+
+      .result-item {
+        flex: 1;
+        min-width: 300px;
+        max-width: 500px;
+      }
+
+      .result-item h4 {
+        color: #666;
+        margin-bottom: 10px;
+        font-weight: normal;
+      }
+
+      .media-container {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      video,
+      img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .history-section {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        margin-top: 30px;
+      }
+
+      .history-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .history-item {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        overflow: hidden;
+        transition: transform 0.3s;
+      }
+
+      .history-item:hover {
+        transform: translateY(-5px);
+      }
+
+      .history-item img,
+      .history-item video {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+      }
+
+      .history-item-info {
+        padding: 10px;
+        background: #f8f9fa;
+      }
+
+      .alert {
+        padding: 15px;
+        border-radius: 8px;
+        margin: 10px 0;
+        display: none;
+      }
+
+      .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+
+      @media (max-width: 768px) {
+        .upload-section,
+        .result-section,
+        .history-section {
+          padding: 20px;
+        }
+
+        .result-container {
+          flex-direction: column;
+        }
+
+        .result-item {
+          min-width: 100%;
+        }
+      }
+    </style>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1><i class="fas fa-drone"></i> Drone AI Detection</h1>
+        <p>Tải lên ảnh hoặc video để nhận diện đối tượng với YOLO</p>
+      </div>
+
+      <div class="upload-section">
+        <div class="upload-area" id="dropArea">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <h3>Kéo thả file vào đây hoặc click để chọn</h3>
+          <p>Hỗ trợ: Ảnh (PNG, JPG), Video (MP4, AVI, MOV, MKV)</p>
+          <p>Kích thước tối đa: 500MB</p>
+          <button
+            class="upload-btn"
+            onclick="document.getElementById('fileInput').click()"
+          >
+            Chọn File
+          </button>
+          <input
+            type="file"
+            id="fileInput"
+            class="file-input"
+            accept=".png,.jpg,.jpeg,.mp4,.avi,.mov,.mkv"
+          />
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <p style="text-align: center; margin-top: 10px" id="progressText">
+            Đang xử lý...
+          </p>
+        </div>
+      </div>
+
+      <div id="alertContainer"></div>
+
+      <div class="result-section" id="resultSection">
+        <h2>Kết quả nhận diện</h2>
+        <div class="result-container" id="resultContainer">
+          <!-- Kết quả sẽ được hiển thị ở đây -->
+        </div>
+      </div>
+
+      <div class="history-section">
+        <h2><i class="fas fa-history"></i> Lịch sử xử lý</h2>
+        <button
+          class="upload-btn"
+          onclick="loadHistory()"
+          style="margin-bottom: 20px"
+        >
+          <i class="fas fa-sync-alt"></i> Tải lại
+        </button>
+        <div class="history-list" id="historyList">
+          <!-- Lịch sử sẽ được hiển thị ở đây -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // DOM Elements
+      const fileInput = document.getElementById("fileInput");
+      const dropArea = document.getElementById("dropArea");
+      const progressContainer = document.getElementById("progressContainer");
+      const progressFill = document.getElementById("progressFill");
+      const progressText = document.getElementById("progressText");
+      const resultSection = document.getElementById("resultSection");
+      const resultContainer = document.getElementById("resultContainer");
+      const alertContainer = document.getElementById("alertContainer");
+      const historyList = document.getElementById("historyList");
+
+      // Event Listeners
+      fileInput.addEventListener("change", handleFileSelect);
+
+      // Drag and Drop events
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+      });
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      ["dragenter", "dragover"].forEach((eventName) => {
+        dropArea.addEventListener(eventName, highlight, false);
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+      });
+
+      function highlight() {
+        dropArea.style.borderColor = "#764ba2";
+        dropArea.style.background = "#eef2ff";
+      }
+
+      function unhighlight() {
+        dropArea.style.borderColor = "#667eea";
+        dropArea.style.background = "#f8f9fa";
+      }
+
+      dropArea.addEventListener("drop", handleDrop, false);
+
+      function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length > 0) {
+          handleFiles(files);
+        }
+      }
+
+      function handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+          handleFiles(files);
+        }
+      }
+
+      function handleFiles(files) {
+        const file = files[0];
+
+        // Kiểm tra kích thước file (500MB)
+        if (file.size > 500 * 1024 * 1024) {
+          showAlert("File quá lớn! Kích thước tối đa là 500MB", "error");
+          return;
+        }
+
+        // Kiểm tra định dạng
+        const validTypes = [
+          "image/jpeg",
+          "image/png",
+          "image/jpg",
+          "video/mp4",
+          "video/avi",
+          "video/quicktime",
+          "video/x-matroska",
+        ];
+
+        if (!validTypes.includes(file.type)) {
+          showAlert("Định dạng file không được hỗ trợ!", "error");
+          return;
+        }
+
+        uploadFile(file);
+      }
+
+      function uploadFile(file) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Hiển thị progress bar
+        progressContainer.style.display = "block";
+        progressFill.style.width = "0%";
+        progressText.textContent = "Đang tải lên...";
+
+        // Ẩn kết quả cũ
+        resultSection.style.display = "none";
+
+        fetch("/upload", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              // Mô phỏng progress
+              simulateProgress(() => {
+                showResult(data);
+                loadHistory();
+              });
+            } else {
+              showAlert(data.error || "Có lỗi xảy ra!", "error");
+              progressContainer.style.display = "none";
+            }
+          })
+          .catch((error) => {
+            showAlert("Lỗi kết nối!", "error");
+            progressContainer.style.display = "none";
+          });
+      }
+
+      function simulateProgress(onComplete) {
+        let width = 0;
+        const interval = setInterval(() => {
+          if (width >= 100) {
+            clearInterval(interval);
+            progressText.textContent = "Hoàn thành!";
+            setTimeout(onComplete, 500);
+          } else {
+            width += 10;
+            progressFill.style.width = width + "%";
+            progressText.textContent = `Đang xử lý... ${width}%`;
+          }
+        }, 200);
+      }
+
+      function showResult(data) {
+        // Ẩn progress bar
+        progressContainer.style.display = "none";
+
+        // Xóa nội dung cũ
+        resultContainer.innerHTML = "";
+
+        // Hiển thị kết quả
+        let html = "";
+
+        if (data.result_type === "video") {
+          html = `
+                    <div class="result-item">
+                        <h4>Video đã xử lý (MP4):</h4>
+                        <div class="media-container">
+                            <video controls autoplay>
+                                <source src="${data.result_url}" type="video/mp4">
+                                Trình duyệt không hỗ trợ video.
+                            </video>
+                        </div>
+                        <p style="margin-top: 10px; text-align: center;">
+                            <a href="${data.result_url}" download class="upload-btn" style="display: inline-block;">
+                                <i class="fas fa-download"></i> Tải xuống
+                            </a>
+                        </p>
+                    </div>
+                `;
+        } else {
+          html = `
+                    <div class="result-item">
+                        <h4>Ảnh đã xử lý:</h4>
+                        <div class="media-container">
+                            <img src="${data.result_url}" alt="Kết quả">
+                        </div>
+                        <p style="margin-top: 10px; text-align: center;">
+                            <a href="${data.result_url}" download class="upload-btn" style="display: inline-block;">
+                                <i class="fas fa-download"></i> Tải xuống
+                            </a>
+                        </p>
+                    </div>
+                `;
+        }
+
+        resultContainer.innerHTML = html;
+        resultSection.style.display = "block";
+        showAlert("Xử lý thành công!", "success");
+      }
+
+      function showAlert(message, type) {
+        const alertDiv = document.createElement("div");
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.innerHTML = `
+                <i class="fas fa-${
+                  type === "success" ? "check-circle" : "exclamation-circle"
+                }"></i>
+                ${message}
+            `;
+
+        alertContainer.appendChild(alertDiv);
+        alertDiv.style.display = "block";
+
+        setTimeout(() => {
+          alertDiv.remove();
+        }, 5000);
+      }
+
+      function loadHistory() {
+        fetch("/list_results")
+          .then((response) => response.json())
+          .then((data) => {
+            let html = "";
+
+            if (data.length === 0) {
+              html =
+                '<p style="text-align: center; color: #666;">Chưa có kết quả nào</p>';
+            } else {
+              data.forEach((item) => {
+                const date = new Date(item.created * 1000);
+                const dateStr = date.toLocaleString("vi-VN");
+
+                html += `
+                                <div class="history-item">
+                                    ${
+                                      item.type === "video"
+                                        ? `<video src="${item.url}" controls></video>`
+                                        : `<img src="${item.url}" alt="Kết quả">`
+                                    }
+                                    <div class="history-item-info">
+                                        <p><strong>${item.name.replace(
+                                          "result_",
+                                          ""
+                                        )}</strong></p>
+                                        <p><small>${dateStr}</small></p>
+                                    </div>
+                                </div>
+                            `;
+              });
+            }
+
+            historyList.innerHTML = html;
+          })
+          .catch((error) => {
+            console.error("Error loading history:", error);
+          });
+      }
+
+      // Tải lịch sử khi trang được load
+      window.addEventListener("DOMContentLoaded", loadHistory);
+    </script>
+  </body>
+</html>
