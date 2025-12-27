@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, Response
 import os
 from werkzeug.utils import secure_filename
 from utils.video_processor import VideoProcessor
@@ -6,7 +6,9 @@ import uuid
 from datetime import datetime
 
 app = Flask(__name__)
-
+# Thêm cấu hình
+CONF_THRESHOLD = 0.4
+IOU_THRESHOLD = 0.50
 # Cấu hình
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['RESULT_FOLDER'] = 'static/results'
@@ -18,7 +20,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['RESULT_FOLDER'], exist_ok=True)
 
 # Khởi tạo processor
-processor = VideoProcessor('models/best.pt')
+processor = VideoProcessor('models/best.onnx')
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -27,7 +29,17 @@ def allowed_file(filename):
 @app.route('/')
 def index():
     return render_template('index.html')
+@app.route('/live')
+def live_page():
+    """Trang giao diện xem camera"""
+    return render_template('live.html')
 
+@app.route('/video_feed')
+def video_feed():
+    """Route này trả về dữ liệu hình ảnh liên tục"""
+    # source=0 là Webcam mặc định. Nếu dùng Camera IP thì thay bằng link RTSP
+    return Response(processor.generate_frames(source=0, conf=CONF_THRESHOLD, iou=IOU_THRESHOLD),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -56,11 +68,11 @@ def upload_file():
         try:
             if file_ext in ['mp4', 'avi', 'mov', 'mkv']:
                 # Xử lý video
-                processor.process_video(upload_path, result_path)
+                processor.process_video(upload_path, result_path, conf = CONF_THRESHOLD, iou = IOU_THRESHOLD)
                 result_type = 'video'
             else:
                 # Xử lý ảnh
-                processor.process_image(upload_path, result_path)
+                processor.process_image(upload_path, result_path, conf = CONF_THRESHOLD, iou = IOU_THRESHOLD)
                 result_type = 'image'
             
             return jsonify({

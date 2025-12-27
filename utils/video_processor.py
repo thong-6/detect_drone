@@ -6,11 +6,40 @@ from moviepy.editor import VideoFileClip
 import tempfile
 
 class VideoProcessor:
-    def __init__(self, model_path='models/best.pt'):
-        # Load model YOLO
+    def __init__(self, model_path='models/best.onnx'):
         self.model = YOLO(model_path)
+     
+
+    def generate_frames(self, source=0, conf=0.40, iou=0.50):
+        """
+        Hàm này mở camera, xử lý YOLO và trả về luồng dữ liệu ảnh (Stream)
+        source: 0 (webcam laptop), 1 (cam ngoài), hoặc 'rtsp://...' (IP Camera)
+        """
+        cap = cv2.VideoCapture(source)
         
-    def process_video(self, input_path, output_path):
+        while True:
+            success, frame = cap.read()
+            if not success:
+                break
+                
+            # 1. Chạy YOLO trên frame hiện tại
+            # stream=True giúp tối ưu bộ nhớ khi chạy liên tục
+            results = self.model(frame, stream=True, conf=conf, iou=iou)
+            
+            # 2. Vẽ kết quả lên frame
+            for result in results:
+                annotated_frame = result.plot()
+                
+                # 3. Mã hóa ảnh sang định dạng JPEG để gửi qua web
+                ret, buffer = cv2.imencode('.jpg', annotated_frame)
+                frame_bytes = buffer.tobytes()
+                
+                # 4. Trả về frame theo chuẩn Multipart (MJPEG)
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                       
+        cap.release()
+    def process_video(self, input_path, output_path, conf = 0.4, iou=0.50):
         """
         Xử lý video và lưu kết quả dưới dạng MP4
         """
@@ -34,7 +63,7 @@ class VideoProcessor:
                 break
                 
             # Chạy YOLO trên frame
-            results = self.model(frame)
+            results = self.model(frame, conf = conf, iou = iou)
             
             # Vẽ bounding boxes lên frame
             annotated_frame = results[0].plot()
@@ -43,7 +72,6 @@ class VideoProcessor:
             out.write(annotated_frame)
             
             frame_count += 1
-            print(f"Đã xử lý frame {frame_count}")
         
         # Giải phóng tài nguyên
         cap.release()
@@ -54,7 +82,7 @@ class VideoProcessor:
         
         return output_path
     
-    def process_image(self, input_path, output_path):
+    def process_image(self, input_path, output_path, conf = 0.4, iou = 0.50):
         """
         Xử lý ảnh
         """
@@ -62,7 +90,7 @@ class VideoProcessor:
         img = cv2.imread(input_path)
         
         # Chạy YOLO
-        results = self.model(img)
+        results = self.model(img, conf = conf, iou = iou)
         
         # Vẽ kết quả
         annotated_img = results[0].plot()
